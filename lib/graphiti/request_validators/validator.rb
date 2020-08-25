@@ -1,12 +1,13 @@
 module Graphiti
   module RequestValidators
     class Validator
-      attr_reader :errors
+      attr_reader :errors, :action
 
-      def initialize(root_resource, raw_params)
+      def initialize(root_resource, raw_params, action)
         @root_resource = root_resource
         @raw_params = raw_params
         @errors = Graphiti::Util::SimpleErrors.new(raw_params)
+        @action = action
       end
 
       def validate
@@ -35,9 +36,9 @@ module Graphiti
         @deserialized_payload ||= begin
                                     payload = normalized_params
                                     if payload[:data] && payload[:data][:type]
-                                      Graphiti::Deserializer.new(payload)
+                                      Graphiti::Deserializer.new(payload, action)
                                     else
-                                      Graphiti::Deserializer.new({})
+                                      Graphiti::Deserializer.new({}, action)
                                     end
                                   end
       end
@@ -61,15 +62,15 @@ module Graphiti
             next
           end
 
-          typecast_attributes(x[:resource], x[:attributes], x[:meta][:payload_path])
+          typecast_attributes(x[:resource], x[:attributes], x[:meta][:payload_path], relationship: true)
           process_relationships(x[:resource], x[:relationships], x[:meta][:payload_path])
         end
       end
 
-      def typecast_attributes(resource, attributes, payload_path)
+      def typecast_attributes(resource, attributes, payload_path, relationship: false)
         attributes.each_pair do |key, value|
           begin
-            attributes[key] = resource.typecast(key, value, :writable)
+            attributes[key] = resource.typecast(key, value, relationship ? :readable : :writable)
           rescue Graphiti::Errors::UnknownAttribute
             @errors.add(fully_qualified_key(key, payload_path), :unknown_attribute, message: "is an unknown attribute")
           rescue Graphiti::Errors::InvalidAttributeAccess

@@ -240,6 +240,16 @@ RSpec.describe "persistence" do
           it "can modify attributes" do
             expect(employee.last_name).to eq("Jane")
           end
+
+          context "with non-writable id" do
+            before do
+              klass.attribute(:id, :integer, writable: false)
+            end
+
+            it "can modify attributes" do
+              expect(employee.last_name).to eq("Jane")
+            end
+          end
         end
 
         context "when destroying" do
@@ -1630,7 +1640,7 @@ RSpec.describe "persistence" do
           klass.find(payload).save
           expect(position_resource.meta.except(:caller_model)).to eq({
             method: :destroy,
-            attributes: {employee_id: nil, id: 1},
+            attributes: {employee_id: nil, id: "1"},
             relationships: {},
             temp_id: nil
           })
@@ -2389,6 +2399,48 @@ RSpec.describe "persistence" do
             "The referenced resource 'classification' with id '123' could not be found. " \
             "Referenced at 'relationships/classifications'"
           )
+        end
+      end
+
+      context "linking with non-writable association id" do
+        let(:payload) do
+          {
+            data: {
+              type: "positions",
+              relationships: {
+                department: {
+                  data: {
+                    type: "positions",
+                    'id': "123"
+                  }
+                }
+              }
+            }
+          }
+        end
+
+        let(:department_resource) do
+          Class.new(PORO::DepartmentResource) do
+            self.model = PORO::Department
+            attribute :id, :integer, writable: false
+          end
+        end
+
+        let(:klass) do
+          Class.new(PORO::PositionResource) do
+            self.model = PORO::Position
+          end
+        end
+
+        before do
+          PORO::DB.data[:departments] << {id: 123}
+
+          klass.belongs_to :department, resource: department_resource
+        end
+
+        it "responds correctly" do
+          employee = klass.build(payload)
+          expect(employee.save).to eq(true)
         end
       end
     end
