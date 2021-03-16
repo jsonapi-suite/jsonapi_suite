@@ -34,13 +34,13 @@ module Graphiti
 
       def deserialized_payload
         @deserialized_payload ||= begin
-                                    payload = normalized_params
-                                    if payload[:data] && payload[:data][:type]
-                                      Graphiti::Deserializer.new(payload)
-                                    else
-                                      Graphiti::Deserializer.new({})
-                                    end
-                                  end
+          payload = normalized_params
+          if payload[:data] && payload[:data][:type]
+            Graphiti::Deserializer.new(payload)
+          else
+            Graphiti::Deserializer.new({})
+          end
+        end
       end
 
       private
